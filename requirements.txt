@@ -1,4 +1,4 @@
 flask
 gunicorn
 gevent
-jwt
+pyjwt

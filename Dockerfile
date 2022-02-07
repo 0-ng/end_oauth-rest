@@ -8,5 +8,5 @@ WORKDIR /usr/src/app
 COPY ./ ./
 RUN pip install --no-cache-dir -r /usr/src/app/requirements.txt  -i https://pypi.tuna.tsinghua.edu.cn/simple
 
-CMD ["gunicorn", "manage:app", "-c", "./gunicorn.conf.py"]
+CMD ["gunicorn", "manage:app", "-c", "./gunicorn.conf.py", "--log-level", "debug"]
 #CMD ["/usr/local/bi/gunicorn", "-w", "5", "-b", ":8000", "-k", "gevent", "manage:app"]
