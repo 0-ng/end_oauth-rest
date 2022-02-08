@@ -6,7 +6,6 @@ from encryp import computePW, checkPW, createSalt
 import sqlite3
 from config import *
 from model import User, db_init
-import jwt
 import os
 app = Flask(__name__)
 app.config["SECRET_KEY"] = "SECRET_KEY"
@@ -35,35 +34,53 @@ def getlocaltime():
 # 首次Get请求下发CSRF-TOKEN
 @app.route('/login', methods=["POST"])
 def login():
+    print("1", request.form.__str__())
+    print("2", request.values.__str__())
+    print("3", request.get_data().__str__())
+    print("4", request.get_json())
     username = request.values.get("username")
     password = request.values.get("password")
+    print("username", username)
+    print("password", password)
     if username == "" or password == "":
         code = "-1"
-        msg = "Username or password is empty or invalid"
+        data = {
+            "msg": "Username or password is empty or invalid",
+            "token": ""
+        }
     else:
         result = User.queryByName(username)
         print(result)
         if result is None:
             code = "-1"
-            msg = "wrong user name or password"
+            data = {
+                "msg": "wrong user name or password",
+                "token": ""
+            }
         else:
             localPW, salt = result[2], result[3]
             print("data", result)
             isConsistent = checkPW(computePW(password, salt), localPW)
             if isConsistent:
                 code = "0"
-                msg = "Login verification succeeded"
+                data = {
+                    "msg": "Login verification succeeded",
+                    "token": f"oauth.{username}"
+                }
                 # token = jwt.encode({"username": username}, my_secretKey, "HS256")
-                session["logintime"] = getlocaltime()
-                session["isLogin"] = True
-                session["username"] = username
-                print("%s用户登录成功" % username)
+                # session["logintime"] = getlocaltime()
+                # session["isLogin"] = True
+                # session["username"] = username
+                print(f"{username}用户登录成功")
             else:
                 code = "-1"
-                msg = "wrong user name or password"
+                data = {
+                    "msg": "wrong user name or password",
+                    "token": ""
+                }
                 print("%s用户登录输入密码错误,登录失败" % username)
 
-    resp = jsonify(code=code, msg=msg)
+    resp = jsonify(code=code, data=data)
     # result = {"code": 200, 'data': get_host_ip()}
     return resp
 
@@ -74,23 +91,32 @@ def hello():
     return resp
 
 
-@app.route('/getEnv', methods=["GET"])
-def getEnv():
-    username = request.form.get("username", type=str, default="")
-    oauth_rest = 'A'
-    oauth_web = 'A'
-    portal_rest = 'A'
-    portal_web = 'A'
-    redirectUrl = "http://portal-web-a/"
+@app.route('/getEnv', methods=["POST"])
+def getEnvByToken():
+    print("1", request.form.__str__())
+    print("2", request.values.__str__())
+    print("3", request.get_data().__str__())
+    print("4", request.get_json())
+    token = request.values.get("oauth_token")
+    print("token", token)
+    reqEnv, username = token.split(".")
+    if reqEnv != "oauth":
+        resp = jsonify(code=-1, data={"msg": "env error"})
+        return resp
+    respEnv = {
+        "portal_rest": 'A',
+        "portal_web": 'A',
+        # "redirectUrl": "http://portal-web-a/"
+        "redirectUrl": "http://127.0.0.1:8001/"
+    }
     if username == "admin":
-        portal_rest = 'B'
-        portal_web = 'B'
-        redirectUrl = "http://portal-web-b/"
-    data = jsonify(oauth_rest=oauth_rest, oauth_web=oauth_web, portal_rest=portal_rest, portal_web=portal_web, redirectUrl=redirectUrl)
-    resp = jsonify(code=0, data=data)
+        respEnv["portal_rest"] = 'B',
+        respEnv["portal_web"] = 'B',
+        # respEnv["redirectUrl"] = "http://portal-web-b/"
+        respEnv["redirectUrl"] = "http://127.0.0.1:8002/"
+    User.generateAUTHORIZATION(username, respEnv["portal_rest"], respEnv["portal_web"])
+    resp = jsonify(code=0, data={"env": respEnv})
     return resp
-
-
 
 
 @app.route('/createUser', methods=["POST"])
