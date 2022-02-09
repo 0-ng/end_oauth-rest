@@ -91,6 +91,43 @@ def hello():
     return resp
 
 
+def getPortalRestByToken(token):
+    return token.split(".")[1]
+
+
+def getPortalWebByToken(token):
+    return token.split(".")[2]
+
+
+@app.route('/portalLogin', methods=["POST"])
+def portalLogin():
+    print("1", request.form.__str__())
+    print("2", request.values.__str__())
+    print("3", request.get_data().__str__())
+    print("4", request.get_json())
+    code = request.values.get("code")
+    username, token = User.getPortalTokenByCode(code)
+    print(username, token)
+    code = "0"
+    msg = ""
+    if username is None:
+        code = "-1"
+        msg = "username is null"
+        token = None
+    else:
+        if username == "admin":
+            if getPortalRestByToken(token) != "B" and getPortalWebByToken(token) != "B":
+                code = "-1"
+                msg = "token not match"
+                token = None
+        else:
+            if getPortalRestByToken(token) != "A" and getPortalWebByToken(token) != "A":
+                code = "-1"
+                msg = "token not match"
+                token = None
+    resp = jsonify(code=code, data={"token": token, "msg": msg})
+    return resp
+
 @app.route('/getEnv', methods=["POST"])
 def getEnvByToken():
     print("1", request.form.__str__())
@@ -104,18 +141,24 @@ def getEnvByToken():
         resp = jsonify(code=-1, data={"msg": "env error"})
         return resp
     respEnv = {
-        "portal_rest": 'A',
-        "portal_web": 'A',
+        "portal_rest": 'B',
+        "portal_web": 'B',
         # "redirectUrl": "http://portal-web-a/"
-        "redirectUrl": "http://127.0.0.1:8001/"
+        "redirectUrl": "http://127.0.0.1:8002/"
     }
-    if username == "admin":
-        respEnv["portal_rest"] = 'B',
-        respEnv["portal_web"] = 'B',
-        # respEnv["redirectUrl"] = "http://portal-web-b/"
-        respEnv["redirectUrl"] = "http://127.0.0.1:8002/"
-    User.generateAUTHORIZATION(username, respEnv["portal_rest"], respEnv["portal_web"])
-    resp = jsonify(code=0, data={"env": respEnv})
+    if username != "admin":
+        respEnv = {
+            "portal_rest": 'A',
+            "portal_web": 'A',
+            # "redirectUrl": "http://portal-web-a/"
+            "redirectUrl": "http://127.0.0.1:8001/"
+        }
+        # respEnv["portal_rest"] = 'A',
+        # respEnv["portal_web"] = 'A',
+        # # respEnv["redirectUrl"] = "http://portal-web-b/"
+        # respEnv["redirectUrl"] = "http://127.0.0.1:8001/"
+    code = User.generateAUTHORIZATION(username, respEnv["portal_rest"], respEnv["portal_web"])
+    resp = jsonify(code=0, data={"env": respEnv, "code": code})
     return resp
 
 
